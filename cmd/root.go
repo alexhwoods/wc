@@ -89,11 +89,11 @@ var rootCmd = &cobra.Command{
 			fileParseResults = append(fileParseResults, fileParseResult)
 		}
 
-		bytesEnabled, _ := cmd.Flags().GetBool("bytes")
-		linesEnabled, _ := cmd.Flags().GetBool("lines")
-		wordsEnabled, _ := cmd.Flags().GetBool("words")
-		charsEnabled, _ := cmd.Flags().GetBool("chars")
-		allFlagsDisabled := !bytesEnabled && !linesEnabled && !wordsEnabled && !charsEnabled
+		bytesFlag, _ := cmd.Flags().GetBool("bytes")
+		linesFlag, _ := cmd.Flags().GetBool("lines")
+		wordsFlag, _ := cmd.Flags().GetBool("words")
+		charsFlag, _ := cmd.Flags().GetBool("chars")
+		allFlagsDisabled := !bytesFlag && !linesFlag && !wordsFlag && !charsFlag
 
 		totalLines := 0
 		totalWords := 0
@@ -108,16 +108,16 @@ var rootCmd = &cobra.Command{
 
 			s := ""
 
-			if linesEnabled || allFlagsDisabled {
+			if linesFlag || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", fileParseResult.lines)
 			}
-			if wordsEnabled || allFlagsDisabled {
+			if wordsFlag || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", fileParseResult.words)
 			}
-			if charsEnabled || allFlagsDisabled {
+			if charsFlag {
 				s += fmt.Sprintf("%8d", fileParseResult.chars)
 			}
-			if bytesEnabled || allFlagsDisabled {
+			if bytesFlag || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", fileParseResult.bytes)
 			}
 
@@ -127,17 +127,17 @@ var rootCmd = &cobra.Command{
 		if len(files) > 1 {
 			s := ""
 
-			if linesEnabled || allFlagsDisabled {
+			if linesFlag || allFlagsDisabled {
 
 				s += fmt.Sprintf("%8d", totalLines)
 			}
-			if wordsEnabled || allFlagsDisabled {
+			if wordsFlag || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", totalWords)
 			}
-			if charsEnabled || allFlagsDisabled {
+			if charsFlag || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", totalChars)
 			}
-			if bytesEnabled || allFlagsDisabled {
+			if bytesFlag || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", totalBytes)
 			}
 
