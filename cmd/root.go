@@ -6,9 +6,11 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 )
@@ -19,41 +21,54 @@ func check(e error) {
 	}
 }
 
-func processFile(file string) (lines int, words int, err error) {
+func processFile(file string) (lines int, words int, chars int, err error) {
 	f, err := os.Open(file)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	defer f.Close()
 
+	// @note: cannot use scanner because new line characters
+	//        are stripped, and \n vs. \n\r affects the char count
+	reader := bufio.NewReader(f)
 	lines = 0
 	words = 0
+	chars = 0
 
-	scanner := bufio.NewScanner(f)
-	// scans one line at a time
-	for scanner.Scan() {
-		text := scanner.Text()
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return lines, words, chars, err
+		}
+
+		// @note: will count an extra line if the file ends with a newline
+		if err == io.EOF && len(line) == 0 {
+			break
+		}
 
 		lines++
-		words += len(strings.Fields(text))
+		words += len(strings.Fields(line))
+		chars += utf8.RuneCountInString(line)
+
+		if err == io.EOF {
+			break
+		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return lines, words, err
-	}
-
-	return lines, words, nil
+	return lines, words, chars, nil
 }
 
 type FileParseResult struct {
 	filename string
 	lines    int
 	words    int
+	chars    int
 	bytes    int
 }
 
 func (f FileParseResult) String() string {
-	return "lines: " + strconv.Itoa(f.lines) + " bytes: " + strconv.Itoa(f.bytes) + " words: " + strconv.Itoa(f.words) +
+	return "lines: " + strconv.Itoa(f.lines) + " bytes: " + strconv.Itoa(f.bytes) + " chars: " + strconv.Itoa(f.chars) +
+		" words: " + strconv.Itoa(f.words) +
 		" " + f.filename
 }
 
@@ -71,13 +86,14 @@ var rootCmd = &cobra.Command{
 			fileInfo, err := os.Lstat(file)
 			check(err)
 
-			lines, words, err := processFile(file)
+			lines, words, chars, err := processFile(file)
 			check(err)
 
 			fileParseResults[i] = FileParseResult{
 				filename: file,
 				lines:    lines,
 				words:    words,
+				chars:    chars,
 				bytes:    int(fileInfo.Size()),
 			}
 		}
