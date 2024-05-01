@@ -11,6 +11,9 @@ diff <(wc -c test.txt) <(./ccwc -c test.txt) && \
 diff <(wc -l -w test.txt) <(./ccwc -l -w test.txt) && \
 diff <(wc -l -c test.txt) <(./ccwc -l -c test.txt) && \
 diff <(wc -w -c test.txt) <(./ccwc -w -c test.txt) && \
+# there are some complicated interactions between chars and bytes
+diff <(wc -cm test.txt) <(./ccwc -cm test.txt) && \
+diff <(wc -mc test.txt) <(./ccwc -mc test.txt) && \
 diff <(wc -l -w -c test.txt) <(./ccwc -l -w -c test.txt) || \
 exit 1
 
