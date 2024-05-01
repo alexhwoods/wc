@@ -18,7 +18,7 @@ func check(e error) {
 	}
 }
 
-func getCounts(rd io.Reader) (FileParseResult, error) {
+func getCounts(rd io.Reader, name string) (FileParseResult, error) {
 	// @note: cannot use scanner because new line characters
 	//        are stripped, and \n vs. \n\r affects the char count
 	reader := bufio.NewReader(rd)
@@ -49,10 +49,11 @@ func getCounts(rd io.Reader) (FileParseResult, error) {
 	}
 
 	return FileParseResult{
-		lines: lines,
-		words: words,
-		chars: chars,
-		bytes: bytes,
+		lines:    lines,
+		words:    words,
+		chars:    chars,
+		bytes:    bytes,
+		filename: name,
 	}, nil
 }
 
@@ -75,13 +76,11 @@ var rootCmd = &cobra.Command{
 	Short: "word, line, character, and byte count",
 	Long:  `A clone of the wc command in Unix. Do "man wc" for more information.`,
 	RunE: func(cmd *cobra.Command, files []string) error {
-		// bytesEnabled, _ := cmd.Flags().GetBool("bytes")
-		// linesEnabled, _ := cmd.Flags().GetBool("lines")
 		fileParseResults := []FileParseResult{}
 
 		if len(files) == 0 {
 			reader := bufio.NewReader(os.Stdin)
-			fileParseResult, err := getCounts(reader)
+			fileParseResult, err := getCounts(reader, "")
 			check(err)
 
 			fileParseResults = append(fileParseResults, fileParseResult)
@@ -91,14 +90,63 @@ var rootCmd = &cobra.Command{
 			fileReader, err := os.Open(file)
 			check(err)
 
-			fileParseResult, err := getCounts(fileReader)
+			fileParseResult, err := getCounts(fileReader, file)
 			check(err)
 
 			fileParseResults = append(fileParseResults, fileParseResult)
 		}
 
+		bytesEnabled, _ := cmd.Flags().GetBool("bytes")
+		linesEnabled, _ := cmd.Flags().GetBool("lines")
+		wordsEnabled, _ := cmd.Flags().GetBool("words")
+		charsEnabled, _ := cmd.Flags().GetBool("chars")
+
+		totalLines := 0
+		totalWords := 0
+		totalChars := 0
+		totalBytes := 0
+
 		for _, fileParseResult := range fileParseResults {
-			fmt.Println(fileParseResult)
+			totalLines += fileParseResult.lines
+			totalWords += fileParseResult.words
+			totalChars += fileParseResult.chars
+			totalBytes += fileParseResult.bytes
+
+			s := ""
+
+			if linesEnabled {
+				s += fmt.Sprintf("%8d", fileParseResult.lines)
+			}
+			if wordsEnabled {
+				s += fmt.Sprintf("%8d", fileParseResult.words)
+			}
+			if charsEnabled {
+				s += fmt.Sprintf("%8d", fileParseResult.chars)
+			}
+			if bytesEnabled {
+				s += fmt.Sprintf("%8d", fileParseResult.bytes)
+			}
+
+			fmt.Printf(s + " " + fileParseResult.filename + "\n")
+		}
+
+		if len(files) > 1 {
+			s := ""
+
+			if linesEnabled {
+				s += fmt.Sprintf("%8d", totalLines)
+			}
+			if wordsEnabled {
+				s += fmt.Sprintf("%8d", totalWords)
+			}
+			if charsEnabled {
+				s += fmt.Sprintf("%8d", totalChars)
+			}
+			if bytesEnabled {
+				s += fmt.Sprintf("%8d", totalBytes)
+			}
+
+			fmt.Printf(s + " total" + "\n")
 		}
 
 		return nil
@@ -113,7 +161,11 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().BoolP("bytes", "c", false, "The number of bytes in each input file is written to the standard output.  This will cancel out any prior usage of the -m option.")
+	rootCmd.Flags().BoolP("bytes", "c", true, "The number of bytes in each input file is written to the standard output.  This will cancel out any prior usage of the -m option.")
 
-	rootCmd.Flags().BoolP("lines", "l", false, "The number of lines in each input file is written to the standard output.")
+	rootCmd.Flags().BoolP("lines", "l", true, "The number of lines in each input file is written to the standard output.")
+
+	rootCmd.Flags().BoolP("words", "w", true, "The number of words in each input file is written to the standard output.")
+
+	rootCmd.Flags().BoolP("chars", "m", true, "The number of characters in each input file is written to the standard output.  If the current locale does not support multibyte characters, this is equivalent to the -c option.  This will cancel out any prior usage of the -c option.")
 }
