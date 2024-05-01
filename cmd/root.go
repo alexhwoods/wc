@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -63,12 +62,6 @@ type FileParseResult struct {
 	words    int
 	chars    int
 	bytes    int
-}
-
-func (f FileParseResult) String() string {
-	return "lines: " + strconv.Itoa(f.lines) + " bytes: " + strconv.Itoa(f.bytes) + " chars: " + strconv.Itoa(f.chars) +
-		" words: " + strconv.Itoa(f.words) +
-		" " + f.filename
 }
 
 var rootCmd = &cobra.Command{
