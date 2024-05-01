@@ -4,6 +4,7 @@
 go build -o ccwc
 
 # Compare counts and exit with code 1 if any difference is found
+diff <(wc test.txt) <(./ccwc test.txt) && \
 diff <(wc -l test.txt) <(./ccwc -l test.txt) && \
 diff <(wc -w test.txt) <(./ccwc -w test.txt) && \
 diff <(wc -c test.txt) <(./ccwc -c test.txt) && \
