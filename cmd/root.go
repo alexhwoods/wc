@@ -100,6 +100,7 @@ var rootCmd = &cobra.Command{
 		linesEnabled, _ := cmd.Flags().GetBool("lines")
 		wordsEnabled, _ := cmd.Flags().GetBool("words")
 		charsEnabled, _ := cmd.Flags().GetBool("chars")
+		allFlagsDisabled := !bytesEnabled && !linesEnabled && !wordsEnabled && !charsEnabled
 
 		totalLines := 0
 		totalWords := 0
@@ -114,16 +115,16 @@ var rootCmd = &cobra.Command{
 
 			s := ""
 
-			if linesEnabled {
+			if linesEnabled || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", fileParseResult.lines)
 			}
-			if wordsEnabled {
+			if wordsEnabled || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", fileParseResult.words)
 			}
-			if charsEnabled {
+			if charsEnabled || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", fileParseResult.chars)
 			}
-			if bytesEnabled {
+			if bytesEnabled || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", fileParseResult.bytes)
 			}
 
@@ -133,16 +134,17 @@ var rootCmd = &cobra.Command{
 		if len(files) > 1 {
 			s := ""
 
-			if linesEnabled {
+			if linesEnabled || allFlagsDisabled {
+
 				s += fmt.Sprintf("%8d", totalLines)
 			}
-			if wordsEnabled {
+			if wordsEnabled || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", totalWords)
 			}
-			if charsEnabled {
+			if charsEnabled || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", totalChars)
 			}
-			if bytesEnabled {
+			if bytesEnabled || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", totalBytes)
 			}
 
@@ -161,11 +163,11 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().BoolP("bytes", "c", true, "The number of bytes in each input file is written to the standard output.  This will cancel out any prior usage of the -m option.")
+	rootCmd.Flags().BoolP("bytes", "c", false, "The number of bytes in each input file is written to the standard output.  This will cancel out any prior usage of the -m option.")
 
-	rootCmd.Flags().BoolP("lines", "l", true, "The number of lines in each input file is written to the standard output.")
+	rootCmd.Flags().BoolP("lines", "l", false, "The number of lines in each input file is written to the standard output.")
 
-	rootCmd.Flags().BoolP("words", "w", true, "The number of words in each input file is written to the standard output.")
+	rootCmd.Flags().BoolP("words", "w", false, "The number of words in each input file is written to the standard output.")
 
-	rootCmd.Flags().BoolP("chars", "m", true, "The number of characters in each input file is written to the standard output.  If the current locale does not support multibyte characters, this is equivalent to the -c option.  This will cancel out any prior usage of the -c option.")
+	rootCmd.Flags().BoolP("chars", "m", false, "The number of characters in each input file is written to the standard output.  If the current locale does not support multibyte characters, this is equivalent to the -c option.  This will cancel out any prior usage of the -c option.")
 }
