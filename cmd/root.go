@@ -93,6 +93,13 @@ var rootCmd = &cobra.Command{
 		linesFlag, _ := cmd.Flags().GetBool("lines")
 		wordsFlag, _ := cmd.Flags().GetBool("words")
 		charsFlag, _ := cmd.Flags().GetBool("chars")
+
+		// @note: I'm varying from official wc behavior here.
+		//        They will take the last of -c and -m if both are used.
+		//        I'm simply going to use -m if both are used.
+		//        Cobra does not have a simple way of getting the order.
+		//        Also, I really dislike -cm and -mc giving different behavior.
+		charsEnabled := charsFlag && !bytesFlag
 		allFlagsDisabled := !bytesFlag && !linesFlag && !wordsFlag && !charsFlag
 
 		totalLines := 0
@@ -114,7 +121,7 @@ var rootCmd = &cobra.Command{
 			if wordsFlag || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", fileParseResult.words)
 			}
-			if charsFlag {
+			if charsEnabled {
 				s += fmt.Sprintf("%8d", fileParseResult.chars)
 			}
 			if bytesFlag || allFlagsDisabled {
@@ -134,7 +141,7 @@ var rootCmd = &cobra.Command{
 			if wordsFlag || allFlagsDisabled {
 				s += fmt.Sprintf("%8d", totalWords)
 			}
-			if charsFlag || allFlagsDisabled {
+			if charsEnabled {
 				s += fmt.Sprintf("%8d", totalChars)
 			}
 			if bytesFlag || allFlagsDisabled {
