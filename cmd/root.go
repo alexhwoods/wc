@@ -1,6 +1,3 @@
-/*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -21,24 +18,19 @@ func check(e error) {
 	}
 }
 
-func processFile(file string) (lines int, words int, chars int, err error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return 0, 0, 0, err
-	}
-	defer f.Close()
-
+func getCounts(rd io.Reader) (FileParseResult, error) {
 	// @note: cannot use scanner because new line characters
 	//        are stripped, and \n vs. \n\r affects the char count
-	reader := bufio.NewReader(f)
-	lines = 0
-	words = 0
-	chars = 0
+	reader := bufio.NewReader(rd)
+	lines := 0
+	words := 0
+	chars := 0
+	bytes := 0
 
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil && err != io.EOF {
-			return lines, words, chars, err
+			return FileParseResult{}, err
 		}
 
 		// @note: will count an extra line if the file ends with a newline
@@ -49,13 +41,19 @@ func processFile(file string) (lines int, words int, chars int, err error) {
 		lines++
 		words += len(strings.Fields(line))
 		chars += utf8.RuneCountInString(line)
+		bytes += len(line)
 
 		if err == io.EOF {
 			break
 		}
 	}
 
-	return lines, words, chars, nil
+	return FileParseResult{
+		lines: lines,
+		words: words,
+		chars: chars,
+		bytes: bytes,
+	}, nil
 }
 
 type FileParseResult struct {
@@ -79,23 +77,24 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, files []string) error {
 		// bytesEnabled, _ := cmd.Flags().GetBool("bytes")
 		// linesEnabled, _ := cmd.Flags().GetBool("lines")
+		fileParseResults := []FileParseResult{}
 
-		fileParseResults := make([]FileParseResult, len(files))
-
-		for i, file := range files {
-			fileInfo, err := os.Lstat(file)
+		if len(files) == 0 {
+			reader := bufio.NewReader(os.Stdin)
+			fileParseResult, err := getCounts(reader)
 			check(err)
 
-			lines, words, chars, err := processFile(file)
+			fileParseResults = append(fileParseResults, fileParseResult)
+		}
+
+		for _, file := range files {
+			fileReader, err := os.Open(file)
 			check(err)
 
-			fileParseResults[i] = FileParseResult{
-				filename: file,
-				lines:    lines,
-				words:    words,
-				chars:    chars,
-				bytes:    int(fileInfo.Size()),
-			}
+			fileParseResult, err := getCounts(fileReader)
+			check(err)
+
+			fileParseResults = append(fileParseResults, fileParseResult)
 		}
 
 		for _, fileParseResult := range fileParseResults {
