@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -18,38 +19,42 @@ func check(e error) {
 	}
 }
 
-func processFile(file string) (lines int, err error) {
+func processFile(file string) (lines int, words int, err error) {
 	f, err := os.Open(file)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	defer f.Close()
 
 	lines = 0
+	words = 0
 
 	scanner := bufio.NewScanner(f)
 	// scans one line at a time
 	for scanner.Scan() {
-		// _ := scanner.Text()
+		text := scanner.Text()
 
 		lines++
+		words += len(strings.Fields(text))
 	}
 
 	if err := scanner.Err(); err != nil {
-		return lines, err
+		return lines, words, err
 	}
 
-	return lines, nil
+	return lines, words, nil
 }
 
 type FileParseResult struct {
 	filename string
 	lines    int
+	words    int
 	bytes    int
 }
 
 func (f FileParseResult) String() string {
-	return "lines: " + strconv.Itoa(f.lines) + " bytes: " + strconv.Itoa(f.bytes) + " " + f.filename
+	return "lines: " + strconv.Itoa(f.lines) + " bytes: " + strconv.Itoa(f.bytes) + " words: " + strconv.Itoa(f.words) +
+		" " + f.filename
 }
 
 var rootCmd = &cobra.Command{
@@ -66,12 +71,13 @@ var rootCmd = &cobra.Command{
 			fileInfo, err := os.Lstat(file)
 			check(err)
 
-			lines, err := processFile(file)
+			lines, words, err := processFile(file)
 			check(err)
 
 			fileParseResults[i] = FileParseResult{
 				filename: file,
 				lines:    lines,
+				words:    words,
 				bytes:    int(fileInfo.Size()),
 			}
 		}
