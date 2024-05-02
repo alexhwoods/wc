@@ -8,6 +8,7 @@ echo "Running: diff <(wc test.txt) <(./ccwc test.txt)" && diff <(wc test.txt) <(
 echo "Running: diff <(wc -l test.txt) <(./ccwc -l test.txt)" && diff <(wc -l test.txt) <(./ccwc -l test.txt) && \
 echo "Running: diff <(wc -w test.txt) <(./ccwc -w test.txt)" && diff <(wc -w test.txt) <(./ccwc -w test.txt) && \
 echo "Running: diff <(wc -c test.txt) <(./ccwc -c test.txt)" && diff <(wc -c test.txt) <(./ccwc -c test.txt) && \
+echo "Running: diff <(wc -m test.txt) <(./ccwc -m test.txt)" && diff <(wc -m test.txt) <(./ccwc -m test.txt) && \
 echo "Running: diff <(wc -l -w test.txt) <(./ccwc -l -w test.txt)" && diff <(wc -l -w test.txt) <(./ccwc -l -w test.txt) && \
 echo "Running: diff <(wc -l -c test.txt) <(./ccwc -l -c test.txt)" && diff <(wc -l -c test.txt) <(./ccwc -l -c test.txt) && \
 echo "Running: diff <(wc -w -c test.txt) <(./ccwc -w -c test.txt)" && diff <(wc -w -c test.txt) <(./ccwc -w -c test.txt) && \
