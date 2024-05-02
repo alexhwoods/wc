@@ -6,7 +6,10 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"unicode/utf8"
+
+	"wc/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -101,37 +104,60 @@ var rootCmd = &cobra.Command{
 		charsEnabled := charsFlag && !bytesFlag
 		allFlagsDisabled := !bytesFlag && !linesFlag && !wordsFlag && !charsFlag
 
+		semaphore := utils.NewSemaphore(50)
+		wg := sync.WaitGroup{}
+		totals := make(chan FileParseResult)
+
 		totalLines := 0
 		totalWords := 0
 		totalChars := 0
 		totalBytes := 0
 
+		go func() {
+			for fileParseResult := range totals {
+				totalLines += fileParseResult.lines
+				totalWords += fileParseResult.words
+				totalChars += fileParseResult.chars
+				totalBytes += fileParseResult.bytes
+			}
+		}()
+
 		if len(files) == 0 {
-			reader := bufio.NewReader(os.Stdin)
-			fileParseResult, err := getCounts(reader, "")
-			check(err)
+			semaphore.Acquire()
+			wg.Add(1)
+			go func() {
+				defer semaphore.Release()
+				defer wg.Done()
 
-			totalLines += fileParseResult.lines
-			totalWords += fileParseResult.words
-			totalChars += fileParseResult.chars
-			totalBytes += fileParseResult.bytes
+				reader := bufio.NewReader(os.Stdin)
+				fileParseResult, err := getCounts(reader, "")
+				check(err)
 
+				totals <- fileParseResult
+			}()
 		}
 
 		for _, file := range files {
-			fileReader, err := os.Open(file)
-			check(err)
+			semaphore.Acquire()
+			wg.Add(1)
+			go func(file string) {
+				defer semaphore.Release()
+				defer wg.Done()
 
-			fileParseResult, err := getCounts(fileReader, file)
-			check(err)
+				fileReader, err := os.Open(file)
+				check(err)
 
-			fileParseResult.Println(bytesFlag, linesFlag, wordsFlag, charsEnabled, allFlagsDisabled)
+				fileParseResult, err := getCounts(fileReader, file)
+				check(err)
 
-			totalLines += fileParseResult.lines
-			totalWords += fileParseResult.words
-			totalChars += fileParseResult.chars
-			totalBytes += fileParseResult.bytes
+				fileParseResult.Println(bytesFlag, linesFlag, wordsFlag, charsEnabled, allFlagsDisabled)
+
+				totals <- fileParseResult
+			}(file)
 		}
+
+		wg.Wait()
+		close(totals)
 
 		if len(files) > 1 {
 			totalResult := FileParseResult{
