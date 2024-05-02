@@ -6,7 +6,10 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"unicode/utf8"
+
+	"wc/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -64,31 +67,30 @@ type FileParseResult struct {
 	bytes    int
 }
 
+func (f FileParseResult) Println(bytesFlag bool, linesFlag bool, wordsFlag bool, charsEnabled bool, allFlagsDisabled bool) {
+	s := ""
+
+	if linesFlag || allFlagsDisabled {
+		s += fmt.Sprintf("%8d", f.lines)
+	}
+	if wordsFlag || allFlagsDisabled {
+		s += fmt.Sprintf("%8d", f.words)
+	}
+	if charsEnabled {
+		s += fmt.Sprintf("%8d", f.chars)
+	}
+	if bytesFlag || allFlagsDisabled {
+		s += fmt.Sprintf("%8d", f.bytes)
+	}
+
+	fmt.Printf(s + " " + f.filename + "\n")
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "wc",
 	Short: "word, line, character, and byte count",
 	Long:  `A clone of the wc command in Unix. Do "man wc" for more information.`,
 	RunE: func(cmd *cobra.Command, files []string) error {
-		fileParseResults := []FileParseResult{}
-
-		if len(files) == 0 {
-			reader := bufio.NewReader(os.Stdin)
-			fileParseResult, err := getCounts(reader, "")
-			check(err)
-
-			fileParseResults = append(fileParseResults, fileParseResult)
-		}
-
-		for _, file := range files {
-			fileReader, err := os.Open(file)
-			check(err)
-
-			fileParseResult, err := getCounts(fileReader, file)
-			check(err)
-
-			fileParseResults = append(fileParseResults, fileParseResult)
-		}
-
 		bytesFlag, _ := cmd.Flags().GetBool("bytes")
 		linesFlag, _ := cmd.Flags().GetBool("lines")
 		wordsFlag, _ := cmd.Flags().GetBool("words")
@@ -102,53 +104,71 @@ var rootCmd = &cobra.Command{
 		charsEnabled := charsFlag && !bytesFlag
 		allFlagsDisabled := !bytesFlag && !linesFlag && !wordsFlag && !charsFlag
 
+		semaphore := utils.NewSemaphore(50)
+		wg := sync.WaitGroup{}
+		totals := make(chan FileParseResult)
+
 		totalLines := 0
 		totalWords := 0
 		totalChars := 0
 		totalBytes := 0
 
-		for _, fileParseResult := range fileParseResults {
-			totalLines += fileParseResult.lines
-			totalWords += fileParseResult.words
-			totalChars += fileParseResult.chars
-			totalBytes += fileParseResult.bytes
+		go func() {
+			for fileParseResult := range totals {
+				totalLines += fileParseResult.lines
+				totalWords += fileParseResult.words
+				totalChars += fileParseResult.chars
+				totalBytes += fileParseResult.bytes
+			}
+		}()
 
-			s := ""
+		if len(files) == 0 {
+			semaphore.Acquire()
+			wg.Add(1)
+			go func() {
+				defer semaphore.Release()
+				defer wg.Done()
 
-			if linesFlag || allFlagsDisabled {
-				s += fmt.Sprintf("%8d", fileParseResult.lines)
-			}
-			if wordsFlag || allFlagsDisabled {
-				s += fmt.Sprintf("%8d", fileParseResult.words)
-			}
-			if charsEnabled {
-				s += fmt.Sprintf("%8d", fileParseResult.chars)
-			}
-			if bytesFlag || allFlagsDisabled {
-				s += fmt.Sprintf("%8d", fileParseResult.bytes)
-			}
+				reader := bufio.NewReader(os.Stdin)
+				fileParseResult, err := getCounts(reader, "")
+				check(err)
 
-			fmt.Printf(s + " " + fileParseResult.filename + "\n")
+				totals <- fileParseResult
+			}()
 		}
 
+		for _, file := range files {
+			semaphore.Acquire()
+			wg.Add(1)
+			go func(file string) {
+				defer semaphore.Release()
+				defer wg.Done()
+
+				fileReader, err := os.Open(file)
+				check(err)
+
+				fileParseResult, err := getCounts(fileReader, file)
+				check(err)
+
+				fileParseResult.Println(bytesFlag, linesFlag, wordsFlag, charsEnabled, allFlagsDisabled)
+
+				totals <- fileParseResult
+			}(file)
+		}
+
+		wg.Wait()
+		close(totals)
+
 		if len(files) > 1 {
-			s := ""
-
-			if linesFlag || allFlagsDisabled {
-
-				s += fmt.Sprintf("%8d", totalLines)
-			}
-			if wordsFlag || allFlagsDisabled {
-				s += fmt.Sprintf("%8d", totalWords)
-			}
-			if charsEnabled {
-				s += fmt.Sprintf("%8d", totalChars)
-			}
-			if bytesFlag || allFlagsDisabled {
-				s += fmt.Sprintf("%8d", totalBytes)
+			totalResult := FileParseResult{
+				lines:    totalLines,
+				words:    totalWords,
+				chars:    totalChars,
+				bytes:    totalBytes,
+				filename: "total",
 			}
 
-			fmt.Printf(s + " total" + "\n")
+			totalResult.Println(bytesFlag, linesFlag, wordsFlag, charsEnabled, allFlagsDisabled)
 		}
 
 		return nil
